@@ -5,7 +5,7 @@ var LISTEN_IP = 'localhost';
 // サーバがListenするポート
 var LISTEN_PORT = 3030;
 // ファイル名が指定されない場合に返す既定のファイル名
-var DEFAULT_FILE = "default.html";
+var DEFAULT_FILE = "mouse-console_ngws.html";
 // 公開するディレクトリのルート
 var DOCUMENT_ROOT = __dirname + '/public/'
 

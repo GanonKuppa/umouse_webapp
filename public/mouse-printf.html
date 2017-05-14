@@ -3,70 +3,114 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Printf Console </title>
+  <title>μMouse Browser Console </title>
 
   <!-- フォントの読み込み -->
   <link href="https://fonts.googleapis.com/css?family=Inconsolata|Press+Start+2P|Source+Code+Pro" rel="stylesheet">
   <!-- BootstrapのCSS読み込み -->
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-  <link href="./css/sticky-footer.css" rel="stylesheet">
+  <link href="css/bootstrap.min.css" rel="stylesheet">
   <!-- jQuery読み込み -->
-  <script src="http://code.jquery.com/jquery-latest.js"></script>
+  <script src="./js/jquery-latest.js"></script>
   <!-- BootstrapのJS読み込み -->
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-  <!-- 各種JS読み込み -->
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- 文字列操作系関数読み込み-->
-  <script type="text/javascript" src="./js/util.js"></script>
+  <script src="./js/bootstrap.min.js"></script>
+  <!-- mqttをwsで使うためのライブラリの読み込み -->
+  <script src="./js/mqttws31.js" type="text/javascript"></script>
+  <!-- cssの読み込み -->
+  <link href="./css/all-page.css" rel="stylesheet">
 
+  <!--javascriptの記述 -->
+  <script type="text/javascript" src="./js/util.js"></script>
   <script type="text/javascript">
-    //ヘッダーとフッターの読み込み
-    $(function() {
+
+    var logno_topic_list = 0;
+    var logno_server_status = 0;
+    var topic_list = [];
+    var default_brk_ip = "flandre.local";
+    var default_brk_port = 9090;
+
+    //printfコンソール用グローバル変数
+    var last_msg = "";
+    var logno_message = 0;
+    var scroll_flag = true;
+    var logno_console = 0;
+    var message_len = 250;
+
+    var client;
+
+    $(document).ready(function () {
+
         $("#header").load("header.html");
         $("#footer").load("footer.html");
 
-        //パラメータの読み込み
-        var server_ip = "";
-        var server_port = "";;
-        var message_len = 0;
-        $.getJSON("param.json", function(data) {
-            server_ip = data.SERVER_ID;
-            server_port = data.SERVER_PORT;
-            message_len = data.MESSAGE_LEN;
-        })
-        //printfコンソール用グローバル変数
-        var last_msg = "";
-        var logno_message = 0;
-        var scroll_flag = true;
-        //soket.ioの接続
-        var s = io.connect('http://' + server_ip + ':' + server_port); //サーバとの接続
+        createClientInstance(default_brk_ip, default_brk_port);
 
-
-        //サーバーから受け取るイベント
-        s.on("connect", function() {
-          s.emit("C2S:mqtt-sub/query_mqtt_topic", {
-            value: "query"
+        function createClientInstance(ip, port){
+          client = new Paho.MQTT.Client(ip, port, "clientId");
+          // set callback handlers
+          client.onConnectionLost = onConnectionLost;
+          client.onMessageArrived = onMessageArrived;
+          // connect the client
+          client.connect({
+            onSuccess: onConnect
           });
-        }); // 接続時
-        s.on("disconnect", function(client) {}); // 切断時
+        }
 
-        s.on("S2C:mqtt-sub/message", function(data) {
-          var data_view = new DataView(data.message);
-          var intList = [];
-          for (var i = 0; i < message_len; i = i + 1) {
-            intList.push(data_view.getUint8(i, true));
+        function subscribe(topic){
+          client.subscribe(topic);
+          topic_list.push(topic);
+        }
+
+        function onConnect() {
+          // Once a connection has been made, make a subscription and send a message.
+          console.log("onConnect");
+          subscribe("mouse");
+
+          message = new Paho.MQTT.Message("This is mqtt-client-ws.html");
+          message.destinationName = "presence";
+          client.send(message);
+          console.log(client);
+
+          var topics = "";
+          for (var i = 0; i < topic_list.length; i++) {
+            if (i == topic_list.length - 1) topics += topic_list[i];
+            else topics += topic_list[i] + ", ";
           }
-          reflectData(intList);
-          //console.log(intList);
-        });
 
-        s.on("S2C:mqtt-sub/topic_list", function(data) {});
+        }
 
-        //クライアントからサーバーへMQTTの購読topic一覧を問い合わせ
-        function sendQuery() {
-          s.emit("C2S:mqtt-sub/query_mqtt_topic", {
-            value: "query"
-          })
+        function onConnectionLost(responseObject) {
+          if (responseObject.errorCode !== 0) {
+            console.log("onConnectionLost:" + responseObject.errorMessage);
+
+          }
+        }
+
+        function onMessageArrived(message) {
+          topic =  message.destinationName;
+          payload = message._getPayloadBytes();
+
+          console.log(topic);
+          if(topic == "mouse"){
+            reflectData(payload);
+          }
+        }
+
+        //受信パケット表示の更新処理
+        function addMessageConsole(value) {
+          var msg = value;//.replace(/[!@$%<>'"&|]/g, ''); //タグ記号とかいくつか削除
+          var timestamp = parseInt(msg.slice(16, 23 + 1), 16);
+          console.log("msg" + msg);
+          //console.log(intList.length)
+
+          // 現在のローカル時間が格納された、Date オブジェクトを作成する
+          var date_obj = new Date();
+          $("#msg_list").prepend("<div class='msg" + logno_console + "' style ='font-size:small;' > " + "[" + logno_console + "] " + msg + "</div>");
+          logno_console++;
+          vis_num = 100;
+          if (logno_console > vis_num - 1) {
+            $('#msg_list > .msg' + (logno_console - vis_num)).remove();
+          }
+
         }
 
         //受信したデータを画面に反映
@@ -77,13 +121,15 @@
           sum = sum % 256;
           if (sum != intList[6]) {
             console.log("chksum err" + intList[6] + "  " + sum);
-            //return;
+            return;
           }
 
-          //printf関係の処理
+
+
+          //printf部分の処理
           if (intList[7] != 0) {
             msg = "";
-            vis_num = 1000;
+            vis_num = 500;
 
             function writeLine() {
 
@@ -96,7 +142,7 @@
 
             for (var i = 0; i < intList[7]; i++) {
 
-              if (intList[message_len - 20 + i] == 10) { //10はLFの文字コードです。
+              if (intList[message_len - 20 + i] == 10) {
                 //console.log("LF");
                 //console.log(utf8_hex_string_to_string(msg));
                 //console.log(msg);
@@ -106,9 +152,8 @@
                 if (lines.length == 0) {
                   writeLine();
                 } else {
-                  lines[lines.length - 1].innerText = utf8_hex_string_to_string(last_msg);
+                  lines[lines.length - 1].innerText = lines[lines.length - 1].innerText + utf8_hex_string_to_string(msg);
                   writeLine();
-
                   if (scroll_flag == true) $("#printf_list").scrollTop($("#printf_list")[0].scrollHeight);
                 }
                 msg = "";
@@ -121,15 +166,15 @@
 
             var findLines = document.getElementById('printf_list');
             var lines = findLines.children;
-
+            console.log(lines.length);
             if (lines.length == 0) {
               writeLine();
             } else {
               lines[lines.length - 1].innerText = lines[lines.length - 1].innerText + utf8_hex_string_to_string(msg);
             }
-
           }
-        }//end printf関係の処理
+
+        }
 
         //printf表示コンソールのスクロールフラグ処理
         function scroll_but_click() {
@@ -138,73 +183,38 @@
           else scroll_flag = true;
         }
 
+    });
 
 
 
-    })
   </script>
 
-  <style>
-    * {
-      font-size: 30px;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-image: url(haikeit.png);
-      background-repeat: no-repeat;
-      background-size: cover;
-    }
-  </style>
 </head>
 
 <body>
-
   <!--ヘッダー部分-->
   <div id="header"></div>
 
-
-  <div class="row">
-    <div class="col-md-10 col-md-offset-1">
-      <!--見出し-->
-      <h1>
-        <span style="display:block;padding-left:0.5em;border-left:5px solid #339966;border-bottom:1px solid #339966;"
-          onclick="obj=document.getElementById('row_printf').style; obj.display=(obj.display=='none')?'block':'none';
-        ">
-          <a style="cursor:pointer;">Printf Output Log</a>
-        </span>
-      </h1>
-    </div>
-  </div>
-
-  <div class="row" id="row_printf" style="opacity: 0.85;">
-    <div class="col-md-10 col-md-offset-1">
+  <div class="row" id="row_printf" style=" opacity: 0.85; ">
+    <div class="col-md-12">
       <!-- コンソールっぽい黒い四角 printf出力 -->
       <div class="panel panel-default">
-        <div class="panel-heading" style="font-size:large; background-color:rgba(50,50,150,0.5); color:#fff;">
+        <div class="panel-heading" style="font-size:large; background-color:rgba(50,50,150,0.5); color:#fff; ">
           <b>printf出力ログ ---------- マウスからの文字出力　</b>
           <button id="scroll_but" type="button" style="color:#000;" onclick="scroll_but_click()">
             　自動スクロールON / OFF　
           </button>
         </div>
 
-        <div id="printf_list" style="height:1250px;
-                                      overflow:auto;
-                                      background-color:rgba(0,0,0,0.75);
-                                      color:#FFF;
-                                      resize: vertical;
-                                      text-shadow: 3px 3px 1px rgba(0,0,0,1.0);
-                                      font-family: 'Inconsolata', 'Source Code Pro','ＭＳ ゴシック';
-                                      ">
+        <div class="panel-contents" id="printf_list" style=" height:1000px; overflow:auto; ">
         </div>
       </div>
     </div>
   </div>
 
-</body>
+  <!--  フッター部分 -->
+  <div id="footer"></div>
 
-<!--  フッター部分 -->
-<div id="footer"></div>
+</body>
 
 </html>

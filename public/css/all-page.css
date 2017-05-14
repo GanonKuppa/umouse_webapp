@@ -17,6 +17,36 @@ body {
   background-image: url(../image/bg.png);
 }
 
+table {
+    width: 530px;
+    border: 1px #E3E3E3 solid;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: auto;
+}
+
+th {
+    padding: 5px;
+    border: #E3E3E3 solid;
+    border-width: 0 0 1px 1px;
+    background: rgba(210,0,0,0.2);
+    font-weight: bold;
+    line-height: 120%;
+    text-align: center;
+}
+
+tr:hover{
+background-color:rgba(0,0,210,0.25);
+}
+
+td {
+    padding: 5px;
+    border: 1px #E3E3E3 solid;
+    border-width: 0 0 1px 1px;
+    text-shadow: 1px 1px 1px rgba(100,100,100,1.0);
+    text-align:right;
+    font-family: 'Inconsolata', 'Source Code Pro','ＭＳ ゴシック';
+}
 
 .nowrap{
     white-space:nowrap;
