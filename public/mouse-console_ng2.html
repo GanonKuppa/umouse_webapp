@@ -245,7 +245,7 @@
 
             for (var i = 0; i < intList[7]; i++) {
 
-              if (intList[message_len - 20 + i] == 10) {
+              if (intList[message_len - 20 + i] == 10) {  //10はLFの文字コードです。
                 //console.log("LF");
                 //console.log(utf8_hex_string_to_string(msg));
                 //console.log(msg);
@@ -255,7 +255,8 @@
                 if (lines.length == 0) {
                   writeLine();
                 } else {
-                  lines[lines.length - 1].innerText = lines[lines.length - 1].innerText + utf8_hex_string_to_string(msg);
+                  //lines[lines.length - 1].innerText = lines[lines.length - 1].innerText + utf8_hex_string_to_string(msg);
+                  lines[lines.length - 1].innerText = utf8_hex_string_to_string(last_msg);
                   writeLine();
                   if (scroll_flag == true) $("#printf_list").scrollTop($("#printf_list")[0].scrollHeight);
                 }
@@ -283,15 +284,15 @@
           document.getElementById('time_value').innerText = (timestamp / 1000.0).toFixed(2);
         }
 
-        //printf表示コンソールのスクロールフラグ処理
-        function scroll_but_click() {
-          console.log("button")
-          if (scroll_flag == true) scroll_flag = false;
-          else scroll_flag = true;
-        }
 
     });
 
+    //printf表示コンソールのスクロールフラグ処理
+    function scroll_but_click() {
+      console.log("button")
+      if (scroll_flag == true) scroll_flag = false;
+      else scroll_flag = true;
+    }
 
 
   </script>
