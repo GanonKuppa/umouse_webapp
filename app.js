@@ -5,7 +5,7 @@ var LISTEN_IP = 'localhost';
 // サーバがListenするポート
 var LISTEN_PORT = 3030;
 // ファイル名が指定されない場合に返す既定のファイル名
-var DEFAULT_FILE = "mouse-console_ngws.html";
+var DEFAULT_FILE = "mouse-console_ng2.html";
 // 公開するディレクトリのルート
 var DOCUMENT_ROOT = __dirname + '/public/'
 
@@ -77,3 +77,43 @@ server.on('request',
 
 server.listen(LISTEN_PORT);
 console.log('Server running at http://' + LISTEN_IP + ':' + LISTEN_PORT);
+
+/*-----------------------------------------------------------------`*/
+var io = require("socket.io").listen(server);
+
+/*-----------------------------------------------------------------`*/
+var mqtt     = require('mqtt');
+var options = {
+    port: 1883,
+    host: 'mqtt://flandre.local:1883',
+    clientId: 'mqttjs_' + Math.random().toString(16).substr(2, 8),
+    username: 'xxxxxxxxxxxxxxxxxx',
+    password: 'xxxxxxxxxxxxxxxxxx',
+    keepalive: 60,
+    reconnectPeriod: 1000,
+    clean: false,
+    protocolId: "MQTT",
+    protocolVersion: 4,
+
+};
+
+var mqtt_client = mqtt.connect('mqtt://flandre.local:1883',options);
+mqtt_client.subscribe("TEST/#");
+mqtt_client.subscribe("mouse/#");
+mqtt_client.subscribe("presense/#");
+mqtt_client.subscribe("gamepad/#");
+
+mqtt_client.on('connect', function () {
+  mqtt_client.publish('presence', 'This is app.js Hello mqtt');
+  console.log("MQTTで接続")
+});
+
+mqtt_client.on('message', function(topic, message, packet) {
+    //console.log(message.toString() + " : " + topic);
+    var topic_array =topic.split("/");
+    var message_array = message
+    console.log(topic_array);
+    console.log(message);
+    send_json = {topic: topic, payload: message_array};
+    io.sockets.emit("mqtt_message",send_json );
+});
