@@ -255,7 +255,6 @@
                 if (lines.length == 0) {
                   writeLine();
                 } else {
-                  //lines[lines.length - 1].innerText = lines[lines.length - 1].innerText + utf8_hex_string_to_string(msg);
                   lines[lines.length - 1].innerText = utf8_hex_string_to_string(last_msg);
                   writeLine();
                   if (scroll_flag == true) $("#printf_list").scrollTop($("#printf_list")[0].scrollHeight);
