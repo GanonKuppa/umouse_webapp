@@ -11,6 +11,8 @@ var DOCUMENT_ROOT = __dirname + '/public/'
 
 var http = require('http');
 var fs = require('fs');
+var url = require('url');
+
 var server = http.createServer();
 
 // 拡張子を抽出
@@ -49,7 +51,7 @@ function getContentType(fileName) {
 server.on('request',
   function(request, response) {
     console.log('Requested Url:' + request.url);
-    var requestedFile = request.url;
+    var requestedFile = url.parse(request.url, true).pathname;
     requestedFile = (requestedFile.substring(requestedFile.length - 1, 1) === '/') ? requestedFile + DEFAULT_FILE : requestedFile;
     console.log('Handle Url:' + requestedFile);
     console.log('File Extention:' + getExtension(requestedFile));
