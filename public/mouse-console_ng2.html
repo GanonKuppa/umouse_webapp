@@ -32,7 +32,7 @@
     var logno_message = 0;
     var scroll_flag = false;
     var logno_console = 0;
-    var message_len = 250;
+    var message_len = 400;
 
     var server_ip = "flandre.local";
     var server_port = "3030";
@@ -50,7 +50,7 @@
 
     $(window).load(function () {
         //サーバとのsocket_ioでの接続
-        var s = io.connect('http://' + server_ip + ':' + server_port);
+        var s = io.connect('http://' + server_ip + ':' + server_port,{ transports: [ 'websocket' ] });
         // 接続確立時
         s.on("connect", function() {
           s.emit("C2S:mqtt-sub/query_mqtt_topic", {

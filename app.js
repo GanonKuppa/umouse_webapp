@@ -119,3 +119,20 @@ mqtt_client.on('message', function(topic, message, packet) {
     send_json = {topic: topic, payload: message_array};
     io.sockets.emit("mqtt_message",send_json );
 });
+
+
+io.sockets.on("connection", function(socket) {
+
+
+    // 切断したときに送信
+    socket.on("disconnect", function() {
+        //    io.sockets.emit("S_to_C_message", {value:"user disconnected"});
+        console.log("サーバーとの通信が切断されました");
+    });
+
+    socket.on("cmd_message", function(data) {
+      payload = data.payload;
+      mqtt_client.publish('cmd', new Buffer(payload, 'utf8'));
+    });
+
+});
