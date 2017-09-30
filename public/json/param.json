@@ -1,5 +1,5 @@
 {
-  "SERVER_ID":"192.168.10.5",
+  "SERVER_ID":"flandre.local",
   "SERVER_PORT":"3030",
-  "MESSAGE_LEN":250
+  "MESSAGE_LEN":400
 }

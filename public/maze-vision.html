@@ -42,30 +42,38 @@
     var server_ip = "";
     var server_port = "";;
     var message_len = 0;
-    $.getJSON("param.json", function(data) {
+    $.getJSON("../json/param.json", function(data) {
       server_ip = data.SERVER_ID;
       server_port = data.SERVER_PORT;
       message_len = data.MESSAGE_LEN;
     })
 
     //soket.ioの接続
-    var s = io.connect('http://' + server_ip + ':' + server_port); //サーバとの接続
+    var s = io.connect('http://' + server_ip + ':' + server_port,{ transports: [ 'websocket' ] });
 
-    s.on("S2C:mqtt-sub/message", function(data) {
+
+    s.on("mqtt_message", function(data) {
+      console.log(data);
+      topic =  data.topic;
+      payload = data.payload;
+
       if(data.topic != "mouse") return;
-      var data_view = new DataView(data.message);
+      var data_view = new DataView(payload);
       var intList = [];
       for (var i = 0; i < message_len; i = i + 1) {
         intList.push(data_view.getUint8(i, true));
       }
       console.log(bytes_to_hex_string(intList) + " : " + data.topic);
+      console.log(intList);
       reflectData(intList);
 
     });
 
+
+
     //受信したデータを画面に反映
     function reflectData(intList) {
-      //console.log("reflectData");
+      console.log("reflectData");
       var sum = 0;
       for (var i = 7; i < message_len; i++) sum += intList[i];
       sum = sum % 256;
@@ -101,6 +109,24 @@
         }
       }
 
+      var mouse_x = 0.0;
+      var mouse_y = 0.0;
+      var mouse_ang = 0.0;
+
+      int_val = intList[88 + 1] + (intList[88] << 8);
+      if (int_val > 32767) int_val = int_val - 65536;
+      mouse_x = int_val /3000.0;
+
+      int_val = intList[90 + 1] + (intList[90] << 8);
+      if (int_val > 32767) int_val = int_val - 65536;
+      mouse_y = int_val /3000.0;
+
+      int_val = intList[152 + 1] + (intList[152] << 8);
+      if (int_val > 32767) int_val = int_val - 65536;
+      mouse_ang = int_val /100.0;
+      console.log("(" + mouse_x + ", " + mouse_y + "), "+ mouse_ang);
+      updateDataView(mouse_x, mouse_y, mouse_ang);
+      setMousePos(mouse_x,mouse_y,mouse_ang);
     }
 
     //初期化及び、変数宣言
@@ -131,6 +157,8 @@
     scene.add(new THREE.AxisHelper(10)); //xyz軸
     initLetterCoor_x(scene);
     initLetterCoor_y(scene);
+    var mouse = initMouse(scene);
+
     //var pache = initPache(scene); //ぱちぇ
     //var serval = initServal(scene);//サーバル
     //var crn = initCRN(scene); //さるの
@@ -139,7 +167,10 @@
     //壁を透明にするときの書き方
     //walls_vertical[0][0].children[0].material.opacity = 0.1;
     //walls_vertical[0][0].children[1].material.opacity = 0.1;
-
+    //マウスの絶対座標
+  　var mouse_x = 0.0;
+    var mouse_y = 0.0;
+    var mouse_ang = 0.0;
 
     //描画ループ
     var render = function() {
@@ -408,6 +439,72 @@
 
     }
 
+    //マウスの初期化
+    function initMouse(scene_){
+      var geometry = new THREE.CubeGeometry(0.08, 0.02, 0.08);
+      var material = new THREE.MeshPhongMaterial({
+        color: 0xaaaa00,
+        shininess: 120,
+        specular: 0x666666,
+        transparent: true
+      });
+      var qube1 = new THREE.Mesh(geometry, material);
+      qube1.position.set(0.0, 0.0, 0.0);
+
+      var geometry = new THREE.CubeGeometry(0.02, 0.021, 0.02);
+      var material = new THREE.MeshPhongMaterial({
+        color: 0xaa0000,
+        shininess: 120,
+        specular: 0x666666,
+        transparent: true
+      });
+      var qube2 = new THREE.Mesh(geometry, material);
+      qube2.position.set(0.0, 0.0, 0.0);
+
+      var geometry = new THREE.CubeGeometry(0.05, 0.021, 0.02);
+      var material = new THREE.MeshPhongMaterial({
+        color: 0xaaaa00,
+        shininess: 120,
+        specular: 0x666666,
+        transparent: true
+      });
+      var qube3 = new THREE.Mesh(geometry, material);
+      qube3.position.set(0.0, 0.0, 0.05);
+
+
+
+      var mouse_ = new THREE.Group();
+      mouse_.add(qube1);
+      mouse_.add(qube2);
+      mouse_.add(qube3);
+      mouse_.position.set(0,0,0);
+      scene_.add(mouse_);
+
+      return mouse_;
+    }
+
+    function setMousePos(x, y, ang){
+
+
+      var rad = Math.PI*ang/180.0;
+      //クォータニオンオブジェクトを生成
+      //var q = new THREE.Quaternion();
+
+      //計算した回転軸と角度を元にクォータニオンをセットアップ
+      //q.setFromAxisAngle( new THREE.Vector3(0, 1, 0).normalize(), rad);
+
+      //適用したいオブジェクトに回転を適用
+      mouse.position.set(0,0,0);
+      mouse.rotation.set(0,rad,0);
+      //mouse.useQuaternion = true;
+      //mouse.rotation.setFromQuaternion(q);
+      mouse.position.set(y,0.05,x);
+
+
+
+    }
+
+
 
     //横壁の初期化
     function initWall_horizontal(scene_) {
@@ -566,6 +663,16 @@
 
     }
 
+    function updateDataView(x,y,ang){
+      document.getElementById('mouse_x').innerText = (x).toFixed(4);
+      document.getElementById('mouse_y').innerText = (y).toFixed(4);
+      document.getElementById('mouse_ang').innerText = (ang).toFixed(4);
+      document.getElementById('maze_x').innerText = (x/0.18).toFixed(4);
+      document.getElementById('maze_y').innerText = (y/0.18).toFixed(4);
+
+
+    }
+
 
   </script>
 
@@ -582,6 +689,36 @@
               opacity: 0.85">
 
   </div>
+
+  <div id="data_view" style="position:absolute;
+              left:1200px; top:30px;
+              z-index: 100;
+              height:230px;
+              width:300px;
+              background-color:rgba(0,0,0,0.75);
+              color:#FFF;
+              font-size:x-large;
+              text-shadow: 3px 3px 1px rgba(0,0,0,1.0);
+              font-family: 'Inconsolata', 'Source Code Pro','ＭＳ ゴシック';
+              opacity: 0.85">
+
+              <font style="font-size:20pt;" color="#ffffff"><b>絶対位置・角度</b></font>　<br>
+              <font style="font-size:20pt;" color="#ffffff">　x: </font>
+              <font style="font-size:20pt;" color="#ffffff" id="mouse_x" 　　>value</font> <br>
+              <font style="font-size:20pt;" color="#ffffff">　y: </font>
+              <font style="font-size:20pt;" color="#ffffff" id="mouse_y" 　　>value</font> <br>
+              <font style="font-size:20pt;" color="#ffffff">　ang: </font>
+              <font style="font-size:20pt;" color="#ffffff" id="mouse_ang" 　　>value</font> <br>
+              <font style="font-size:20pt;" color="#ffffff"><b>迷路座標</b></font>　<br>
+              <font style="font-size:20pt;" color="#ffffff">　x: </font>
+              <font style="font-size:20pt;" color="#ffffff" id="maze_x" 　　>value</font> <br>
+              <font style="font-size:20pt;" color="#ffffff">　y: </font>
+              <font style="font-size:20pt;" color="#ffffff" id="maze_y" 　　>value</font> <br>
+
+
+
+  </div>
+
 
 </body>
 
